@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Código de Hamming
+// Código de Hamming - Transmisor
 // Uso:
 //   # Múltiples archivos -> guarda en out/<base>_trama.txt
 //   node encoder.js tests/msg1.txt tests/msg2.txt --verbose (para ver el procedimiento)
