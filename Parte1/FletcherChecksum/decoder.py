@@ -26,8 +26,7 @@ def fletcher_checksum(data, block_size: int):
     for byte_val in data:
         sum1 = (sum1 + byte_val) % modulus
         sum2 = (sum2 + sum1) % modulus
-    
-    return (sum2 << block_size) | sum1
+    return sum1, sum2
 
 def verify_fletcher(received_message: str, block_size: int = 16, verbose: bool = False):
     """
@@ -45,13 +44,15 @@ def verify_fletcher(received_message: str, block_size: int = 16, verbose: bool =
     checksum_bits = block_size * 2
     data_part = received_message[:-checksum_bits]
     received_checksum_str = received_message[-checksum_bits:]
-    received_checksum = int(received_checksum_str, 2)
-    
+    received_sum1_str = received_checksum_str[:block_size]
+    received_sum2_str = received_checksum_str[block_size:]
+    received_sum1 = int(received_sum1_str, 2)
+    received_sum2 = int(received_sum2_str, 2)
     if verbose:
         print(f"Mensaje recibido: {received_message}")
         print(f"Longitud total: {len(received_message)} bits")
         print(f"Parte de datos: {data_part} ({len(data_part)} bits)")
-        print(f"Checksum recibido: {received_checksum_str} -> {received_checksum}")
+        print(f"Checksum recibido: sum1={received_sum1_str} ({received_sum1}), sum2={received_sum2_str} ({received_sum2})")
     
     # Convertir datos a bloques
     if len(data_part) % block_size != 0:
@@ -64,19 +65,16 @@ def verify_fletcher(received_message: str, block_size: int = 16, verbose: bool =
         print(f"Bloques en hex: {[hex(b) for b in data_blocks]}")
     
     # Calcular checksum de los datos recibidos
-    calculated_checksum = fletcher_checksum(data_blocks, block_size)
-    
+    calculated_sum1, calculated_sum2 = fletcher_checksum(data_blocks, block_size)
     if verbose:
-        print(f"Checksum calculado: {calculated_checksum}")
-        print(f"Checksum recibido:  {received_checksum}")
-    
+        print(f"Checksum calculado: sum1={calculated_sum1}, sum2={calculated_sum2}")
     # Comparar checksums
-    if calculated_checksum == received_checksum:
+    if calculated_sum1 == received_sum1 and calculated_sum2 == received_sum2:
         status = "OK"
         info = "Checksums coinciden"
     else:
         status = "ERROR"
-        info = f"Checksums no coinciden: calculado={calculated_checksum}, recibido={received_checksum}"
+        info = f"Checksums no coinciden: calculado sum1={calculated_sum1}, sum2={calculated_sum2}; recibido sum1={received_sum1}, sum2={received_sum2}"
     
     return status, data_part, info
 

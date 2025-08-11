@@ -74,10 +74,20 @@ function encodeWithFletcher(dataBits, blockSize = 16, verbose = false) {
     const dataBlocks = binaryToBytes(dataBits, blockSize);
     
     // Calcular checksum
-    const checksum = fletcherChecksum(dataBlocks, blockSize, verbose);
-    
-    // Convertir checksum a binario con el doble de bits que el tamaño del bloque
-    const checksumBits = checksum.toString(2).padStart(blockSize * 2, '0');
+    const { sum1, sum2 } = (() => {
+        const modulus = (1 << blockSize) - 1;
+        let sum1 = 0;
+        let sum2 = 0;
+        for (let i = 0; i < dataBlocks.length; i++) {
+            sum1 = (sum1 + dataBlocks[i]) % modulus;
+            sum2 = (sum2 + sum1) % modulus;
+        }
+        return { sum1, sum2 };
+    })();
+    // Convertir sum1 y sum2 a binario y concatenar
+    const sum1Bits = sum1.toString(2).padStart(blockSize, '0');
+    const sum2Bits = sum2.toString(2).padStart(blockSize, '0');
+    const checksumBits = sum1Bits + sum2Bits;
     
     // Mensaje completo = datos originales (con padding si se aplicó) + checksum
     const paddedData = dataBlocks.map(block => 
