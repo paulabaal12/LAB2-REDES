@@ -118,6 +118,7 @@ def main():
     
     if len(files) < 1:
         print("Uso: python fletcher_decoder.py <archivo1> [archivo2 ...] [--verbose] [--block-size=8|16|32]", file=sys.stderr)
+        print("Los archivos pueden estar en cualquier carpeta (out/, in/, tests/, etc.)", file=sys.stderr)
         sys.exit(1)
     
     for file_path in files:
@@ -142,11 +143,7 @@ def main():
         filename = os.path.basename(file_path)
         
         if status == "OK":
-            print(f"{filename} -> OK")
-            if verbose:
-                print(f"  Datos originales: {original_data}")
-            else:
-                print(f"  Datos: {original_data}")
+            print(f"{filename} -> OK {original_data}")
         else:
             print(f"{filename} -> ERROR - Se detectaron errores")
             if verbose:
