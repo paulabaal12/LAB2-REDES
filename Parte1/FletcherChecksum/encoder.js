@@ -118,8 +118,8 @@ const blockSizeArg = rawArgs.find(arg => arg.startsWith('--block-size='));
 const blockSize = blockSizeArg ? parseInt(blockSizeArg.split('=')[1]) : 16;
 
 // Validar tamaño de bloque
-if (![8, 16, 32].includes(blockSize)) {
-    fail('El tamaño de bloque debe ser 8, 16 o 32 bits');
+if (![4, 8, 16, 32].includes(blockSize)) {
+    fail('El tamaño de bloque debe ser 4, 8, 16 o 32 bits');
 }
 
 const args = rawArgs.filter(a => !a.startsWith('--'));
