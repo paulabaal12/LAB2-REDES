@@ -124,7 +124,8 @@ def main():
         status, original_data, info = verify_crc(bits, verbose)
         
         filename = os.path.basename(file_path)
-        
+        print("--"*30)
+        print("\n")
         if status == "OK":
             print(f"{filename} -> OK {original_data}")
         else:
@@ -132,6 +133,7 @@ def main():
             if verbose:
                 print(f"  Detalles: {info}")
             print("  El mensaje se descarta por detectar errores.")
+        print("\n")
 
 if __name__ == "__main__":
     main()

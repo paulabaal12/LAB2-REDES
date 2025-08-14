@@ -122,6 +122,7 @@ if (args.length >= 1) {
         console.log(`  Mensaje original: ${bits.length} bits`);
         console.log(`  Mensaje con CRC32: ${result.fullMessage.length} bits`);
         console.log(`  Overhead: ${result.fullMessage.length - bits.length} bits (32 bits de CRC + padding)`);
+        console.log(`  CRC32: ${result.crcBits}`);
     });
     
     process.exit(0);
