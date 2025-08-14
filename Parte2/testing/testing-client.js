@@ -1,0 +1,1 @@
+// Aquí estaría el código que llamará el cliente en lugar de ejecutarlo directamente en client.js
