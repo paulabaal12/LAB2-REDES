@@ -18,7 +18,7 @@ def bytes_to_blocks(binary_str: str, block_size: int):
     return blocks
 
 def fletcher16_8(data):
-    """Fletcher 16 sobre bloques de 8 bits (como en el ejemplo visual)"""
+    """Fletcher 16 sobre bloques de 8 bits"""
     sum1 = 1
     sum2 = 1
     modulus = 255  # para sumas parciales

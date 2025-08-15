@@ -5,7 +5,6 @@
 
 import sys, os
 
-
 def is_binary(s: str) -> bool:
     return len(s) > 0 and all(c in "01" for c in s)
 
@@ -30,25 +29,21 @@ def bytes_to_blocks(binary_str: str, block_size: int):
     return blocks
 
 def fletcher16_8(data):
-    """Fletcher 16 sobre bloques de 8 bits (como en el ejemplo visual)"""
-    sum1 = 1
-    sum2 = 1
+    """Fletcher 16 sobre bloques de 8 bits"""
+    sum1 = 0  
+    sum2 = 0 
     modulus = 255  # para sumas parciales
-    sum1_16 = 0
-    sum2_16 = 0
     for b in data:
         sum1 = (sum1 + b) % modulus
         sum2 = (sum2 + sum1) % modulus
     # El checksum final es sum2 << 8 | sum1, pero en 16 bits
     return sum1, sum2, (sum2 << 8) | sum1
-    return blocks
 
 def fletcher_checksum(data, block_size: int):
     """Calcula Fletcher checksum"""
     modulus = (1 << block_size) - 1  # 2^block_size - 1
-    sum1 = 0
-    sum2 = 0
-    
+    sum1 = 0  
+    sum2 = 0  
     for byte_val in data:
         sum1 = (sum1 + byte_val) % modulus
         sum2 = (sum2 + sum1) % modulus
@@ -140,7 +135,6 @@ def main():
         print("Los archivos pueden estar en cualquier carpeta (out/, in/, tests/, etc.)", file=sys.stderr)
         sys.exit(1)
     
-
     for file_path in files:
         bits = None
         is_file = os.path.isfile(file_path)
@@ -180,8 +174,8 @@ def main():
                 print(f"  Datos recibidos (sin checksum): {bits[:-16]}")
                 print(f"  Detalle de verificación Fletcher 16 (bloques de 8 bits):")
                 print(f"    Dato (bloque 8 bits)   Sum1   Sum2")
-                sum1_step = 1
-                sum2_step = 1
+                sum1_step = 0  
+                sum2_step = 0 
                 for block in data_blocks:
                     sum1_step = (sum1_step + block) % 255
                     sum2_step = (sum2_step + sum1_step) % 255

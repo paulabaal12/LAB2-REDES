@@ -1,23 +1,19 @@
-
 // Fletcher Checksum - Transmisor
 // Uso:
 //   node encoder.js tests/msg1.txt tests/msg2.txt --verbose --block-size=16
 //   node encoder.js tests/msg1.txt --block-size=8
 
-
 // Convierte un string binario a bloques de tamaño blockSize
 function binaryToBytes(binaryStr, blockSize) {
     const blocks = [];
-    let padding = 0;
     for (let i = 0; i < binaryStr.length; i += blockSize) {
         let chunk = binaryStr.slice(i, i + blockSize);
-        if (chunk.length < blockSize) {
-            padding = blockSize - chunk.length;
-            chunk = chunk.padEnd(blockSize, '0');
+        if (chunk.length === blockSize) {
+            blocks.push(parseInt(chunk, 2));
         }
-        blocks.push(parseInt(chunk, 2));
+        // Si el último bloque es incompleto, lo ignoramos (no padding)
     }
-    return { blocks, padding };
+    return { blocks, padding: 0 };
 }
 
 // Implementación principal del encoder Fletcher
@@ -42,8 +38,8 @@ function encodeWithFletcher(dataBits, blockSize = 8, verbose = false) {
     }
     // Calcular checksum paso a paso
     const modulus = blockSize === 32 ? Math.pow(2, 32) - 1 : (1 << blockSize) - 1;
-    let sum1 = 1;
-    let sum2 = 1;
+    let sum1 = 0; 
+    let sum2 = 0;  
     if (verbose) {
         console.log(`\nCálculo de sumas parciales (modulo ${modulus}):`);
     }
@@ -67,18 +63,18 @@ function encodeWithFletcher(dataBits, blockSize = 8, verbose = false) {
         console.log(`  Checksum combinado: ${checksumBits}`);
     }
     // Mensaje completo = datos originales (con padding si se aplicó) + checksum
-    const paddedData = dataBlocks.map(block => block.toString(2).padStart(blockSize, '0')).join('');
-    const fullMessage = paddedData + checksumBits;
+    const dataBin = dataBlocks.map(block => block.toString(2).padStart(blockSize, '0')).join('');
+    const fullMessage = dataBin + checksumBits;
     if (verbose) {
         console.log(`\nMensaje final:`);
-        console.log(`  Datos (con padding): ${paddedData}`);
+        console.log(`  Datos: ${dataBin}`);
         console.log(`  Checksum:           ${checksumBits}`);
         console.log(`  Mensaje completo:   ${fullMessage}`);
         console.log('  [datos][checksum]');
     }
     return {
         originalBits: dataBits,
-        paddedData: paddedData,
+        dataBin: dataBin,
         checksumBits: checksumBits,
         fullMessage: fullMessage,
         blockSize: blockSize
@@ -106,7 +102,6 @@ function textToBinary(text) {
 const rawArgs = process.argv.slice(2);
 const verbose = rawArgs.includes('--verbose');
 
-
 // Forzar siempre bloques de 8 bits para Fletcher
 const blockSize = 8;
 
@@ -115,6 +110,11 @@ if (![4, 8, 16, 32].includes(blockSize)) {
     fail('El tamaño de bloque debe ser 4, 8, 16 o 32 bits');
 }
 
+// Directorio de salida
+const outDir = 'out'; 
+if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir);
+}
 
 // Filtrar argumentos que no son flags para procesar como archivos o cadenas
 const args = rawArgs.filter(arg => !arg.startsWith('--'));
@@ -153,12 +153,12 @@ if (args.length >= 1) {
             const outFile = path.join(outDir, `${base}_fletcher${blockSize}.txt`);
             fs.writeFileSync(outFile, result.fullMessage + '\n');
             if (verbose) {
-                console.log(`✔ Archivo generado: ${outFile}`);
+                console.log(`✓ Archivo generado: ${outFile}`);
                 console.log(`  Mensaje original: ${bits.length} bits`);
                 console.log(`  Mensaje con Fletcher: ${result.fullMessage.length} bits`);
                 console.log(`  Overhead: ${result.fullMessage.length - bits.length} bits (${blockSize*2} bits de checksum + padding)`);
             } else {
-                console.log(`✔ Archivo generado: ${outFile}`);
+                console.log(`✓ Archivo generado: ${outFile}`);
             }
         } else {
             // Salida pura para uso en consola
