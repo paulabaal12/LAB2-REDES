@@ -120,9 +120,6 @@ if (![4, 8, 16, 32].includes(blockSize)) {
 const args = rawArgs.filter(arg => !arg.startsWith('--'));
 
 if (args.length >= 1) {
-    const outDir = path.resolve(__dirname, 'out');
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-
     args.forEach((inputArg) => {
         let content;
         let isFile = false;
