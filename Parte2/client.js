@@ -10,7 +10,8 @@ const algorithmss = {
 };
 
 const algorithms = {
-        "CRC": "./algorithms/CRC-32/encoder.js"
+        "CRC": "./algorithms/CRC-32/encoder.js",
+        "Fletcher": "./algorithms/FletcherChecksum/encoder.js",
 };
 
 // Función auxiliar para convertir ASCII a binario

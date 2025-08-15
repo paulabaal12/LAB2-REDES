@@ -5,8 +5,20 @@
 
 import sys, os
 
+
 def is_binary(s: str) -> bool:
     return len(s) > 0 and all(c in "01" for c in s)
+
+def text_to_binary(text: str) -> str:
+    return ''.join(f'{ord(c):08b}' for c in text)
+
+def binary_to_text(binary_str: str) -> str:
+    chars = []
+    for i in range(0, len(binary_str), 8):
+        byte = binary_str[i:i+8]
+        if len(byte) == 8:
+            chars.append(chr(int(byte, 2)))
+    return ''.join(chars)
 
 def bytes_to_blocks(binary_str: str, block_size: int):
     """Convierte string binario a lista de enteros (bloques)"""
@@ -50,10 +62,11 @@ def verify_fletcher(received_message: str, block_size: int = 16, verbose: bool =
     checksum_bits = block_size * 2
     data_part = received_message[:-checksum_bits]
     received_checksum_str = received_message[-checksum_bits:]
-    received_sum1_str = received_checksum_str[:block_size]
-    received_sum2_str = received_checksum_str[block_size:]
-    received_sum1 = int(received_sum1_str, 2)
+    # Ahora el orden es [sum2][sum1]
+    received_sum2_str = received_checksum_str[:block_size]
+    received_sum1_str = received_checksum_str[block_size:]
     received_sum2 = int(received_sum2_str, 2)
+    received_sum1 = int(received_sum1_str, 2)
     if verbose:
         print(f"Mensaje recibido: {received_message}")
         print(f"Longitud total: {len(received_message)} bits")
@@ -100,11 +113,11 @@ def infer_block_size_from_filename(filename: str) -> int:
     elif 'fletcher32' in filename:
         return 32
     else:
-        return 16  # default
+        return 16 
 
 def main():
     verbose = False
-    block_size = None
+    block_size = 8 
     files = []
     
     for arg in sys.argv[1:]:
@@ -127,95 +140,67 @@ def main():
         print("Los archivos pueden estar en cualquier carpeta (out/, in/, tests/, etc.)", file=sys.stderr)
         sys.exit(1)
     
+
     for file_path in files:
-        if not os.path.isfile(file_path):
-            print(f"No existe el archivo: {file_path}", file=sys.stderr)
-            continue
-        
-        bits = read_bits_file(file_path)
+        bits = None
+        is_file = os.path.isfile(file_path)
+        if is_file:
+            bits = read_bits_file(file_path)
+        else:
+            # Tratar como cadena directa (texto o binario)
+            bits = file_path.strip()
+
+        # Si no es binario, convertir de texto ASCII a binario
         if not is_binary(bits):
-            print(f"{file_path}: contenido no binario (solo 0/1 en una línea).", file=sys.stderr)
-            continue
-        
+            if verbose:
+                print(f"{file_path}: El contenido no es binario, se asume texto ASCII y se convierte a binario.")
+            bits = text_to_binary(bits)
+
         # Inferir tamaño de bloque si no se especificó
-        current_block_size = block_size or infer_block_size_from_filename(file_path)
-        
+        current_block_size = block_size or (infer_block_size_from_filename(file_path) if is_file else 16)
+
         if verbose:
-            print(f"\n=== Procesando {file_path} ===")
+            print(f"\n=== Procesando {file_path if is_file else '[cadena directa]'} ===")
             print(f"Tamaño de bloque: {current_block_size} bits")
-        
-        # Modo especial: Fletcher 16 sobre bloques de 8 bits
-        if '--fletcher16_8' in sys.argv:
-            filename = os.path.basename(file_path)
+
+        # Modo especial: Fletcher-16 sobre bloques de 8 bits (estándar)
+        if '--fletcher16_8' in sys.argv or (current_block_size == 8 and len(bits) == 48):
+            filename = os.path.basename(file_path) if is_file else '[cadena directa]'
             data_blocks = bytes_to_blocks(bits[:-16], 8)
             sum1, sum2, checksum_calc = fletcher16_8(data_blocks)
             checksum_recv = int(bits[-16:], 2)
-            print(f"{filename} -> {'OK' if checksum_calc == checksum_recv else 'ERROR - Se detectaron errores'}")
-            print(f"  Datos recibidos (sin checksum): {bits[:-16]}")
-            print(f"  Detalle de verificación Fletcher 16 (bloques de 8 bits):")
-            print(f"    Dato (bloque 8 bits)   Sum1   Sum2")
-            sum1_step = 1
-            sum2_step = 1
-            for block in data_blocks:
-                sum1_step = (sum1_step + block) % 255
-                sum2_step = (sum2_step + sum1_step) % 255
-                print(f"    {format(block, '08b')} ({block})   {format(sum1_step, '08b')} ({sum1_step})   {format(sum2_step, '08b')} ({sum2_step})")
-            calc_bits = format(checksum_calc, '016b')
-            recv_bits = format(checksum_recv, '016b')
-            print(f"  Checksum = {calc_bits} ≠ {recv_bits}. ERROR")
-    else:
-        status, original_data, info = verify_fletcher(bits, current_block_size, verbose)
-        filename = os.path.basename(file_path)
-        if status == "OK":
-            # Mostrar checksum calculado y recibido solo si los datos son válidos
-            if original_data and len(original_data) % current_block_size == 0:
-                data_blocks = bytes_to_blocks(original_data, current_block_size)
-                calc_sum1, calc_sum2 = fletcher_checksum(data_blocks, current_block_size)
-                sum1_bits = format(calc_sum1, f'0{current_block_size}b')
-                sum2_bits = format(calc_sum2, f'0{current_block_size}b')
-                received_checksum_str = bits[-current_block_size*2:]
-                received_sum1_str = received_checksum_str[:current_block_size]
-                received_sum2_str = received_checksum_str[current_block_size:]
-                calc_full = f"{sum2_bits}{sum1_bits}"
-                recv_full = f"{received_sum2_str}{received_sum1_str}"
-                print(f"{filename} -> OK {original_data}")
-                print(f"  Checksum = {calc_full} = {recv_full}")
+            if checksum_calc == checksum_recv:
+                print("OK")
+                print(bits[:-16])
             else:
-                print(f"{filename} -> OK {original_data}")
-        else:
-            print(f"{filename} -> ERROR - Se detectaron errores")
-            print("  El mensaje se descarta por detectar errores.")
-            if original_data:
-                print(f"  Datos recibidos (sin checksum): {original_data}")
-                data_blocks = bytes_to_blocks(original_data, current_block_size)
-                if data_blocks:
-                    print(f"    Dato (bloque {current_block_size} bits)   Sum1   Sum2")
-                    modulus = (1 << current_block_size) - 1
-                    sum1 = 1
-                    sum2 = 1
-                    for i, block in enumerate(data_blocks):
-                        sum1 = (sum1 + block) % modulus
-                        sum2 = (sum2 + sum1) % modulus
-                        # Formato alineado
-                        block_bin = format(block, f'0{current_block_size}b')
-                        sum1_bin = format(sum1, f'0{current_block_size}b')
-                        sum2_bin = format(sum2, f'0{current_block_size}b')
-                        print(f"    {block_bin:<{current_block_size}} ({block:>3})   {sum1_bin:<{current_block_size}} ({sum1:>3})   {sum2_bin:<{current_block_size}} ({sum2:>3})")
-                    calc_sum1, calc_sum2 = fletcher_checksum(data_blocks, current_block_size)
-                    sum1_bits = format(calc_sum1, f'0{current_block_size}b')
-                    sum2_bits = format(calc_sum2, f'0{current_block_size}b')
-                    received_checksum_str = bits[-current_block_size*2:]
-                    received_sum1_str = received_checksum_str[:current_block_size]
-                    received_sum2_str = received_checksum_str[current_block_size:]
-                    # Mostrar checksums en una sola línea, resaltando diferencias
-                    calc_full = f"{sum2_bits}{sum1_bits}"
-                    recv_full = f"{received_sum2_str}{received_sum1_str}"
-                    print(f"  Checksum = {calc_full} ≠ {recv_full}. ERROR")
+                print("ERROR FLETCHER")
+                print("Checksum invalido")
+            if verbose:
+                print(f"{filename} -> {'OK' if checksum_calc == checksum_recv else 'ERROR - Se detectaron errores'}")
+                print(f"  Datos recibidos (sin checksum): {bits[:-16]}")
+                print(f"  Detalle de verificación Fletcher 16 (bloques de 8 bits):")
+                print(f"    Dato (bloque 8 bits)   Sum1   Sum2")
+                sum1_step = 1
+                sum2_step = 1
+                for block in data_blocks:
+                    sum1_step = (sum1_step + block) % 255
+                    sum2_step = (sum2_step + sum1_step) % 255
+                    print(f"    {format(block, '08b')} ({block})   {format(sum1_step, '08b')} ({sum1_step})   {format(sum2_step, '08b')} ({sum2_step})")
+                calc_bits = format(checksum_calc, '016b')
+                recv_bits = format(checksum_recv, '016b')
+                if checksum_calc == checksum_recv:
+                    print(f"  Checksum = {calc_bits} = {recv_bits}. OK")
                 else:
-                    print(f"  Nota: La parte de datos extraída no es múltiplo de {current_block_size} bits, por lo que no se puede calcular el checksum esperado.")
+                    print(f"  Checksum = {calc_bits} != {recv_bits}. ERROR")
+        else:
+            status, original_data, info = verify_fletcher(bits, current_block_size, verbose)
+            # Salida simple para integración con servidor/cliente
+            if status == "OK":
+                print("OK")
+                print(original_data)
             else:
-                print("  Forma correcta esperada (sin checksum): <vacío>")
-                print("  Nota: No se pudo extraer la parte de datos original, probablemente por longitud inválida o formato incorrecto.")
+                print("ERROR FLETCHER")
+                print(info)
 
 if __name__ == "__main__":
     main()

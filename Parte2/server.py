@@ -50,7 +50,7 @@ while True:
         conn.close()
         continue
 
-    decoded = subprocess.check_output(["python", algorithms[algo], trama]).decode().strip()
+    decoded = subprocess.check_output(["python", algorithms[algo], trama]).decode('utf-8', errors='replace').strip()
 
     fix_status = False
     if decoded.startswith("FIX"):
@@ -76,7 +76,18 @@ while True:
     else:
         print(f"Trama recibida: {trama}")
         print(f"Decodificada: {decoded}")
-        msg = binary_to_ascii(decoded)
+        # Filtrar solo la línea binaria antes de convertir a ASCII
+        if isinstance(decoded, str):
+            lines = decoded.strip().splitlines()
+            for line in lines:
+                if set(line).issubset({'0', '1'}):
+                    binary_line = line
+                    break
+            else:
+                binary_line = lines[-1]  # fallback
+        else:
+            binary_line = decoded
+        msg = binary_to_ascii(binary_line)
         print(f"Mensaje recibido: {msg}")
     
     if TEST_MODE and num_msg is not None:
