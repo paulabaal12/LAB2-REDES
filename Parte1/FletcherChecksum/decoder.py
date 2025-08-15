@@ -167,7 +167,21 @@ def main():
         status, original_data, info = verify_fletcher(bits, current_block_size, verbose)
         filename = os.path.basename(file_path)
         if status == "OK":
-            print(f"{filename} -> OK {original_data}")
+            # Mostrar checksum calculado y recibido solo si los datos son válidos
+            if original_data and len(original_data) % current_block_size == 0:
+                data_blocks = bytes_to_blocks(original_data, current_block_size)
+                calc_sum1, calc_sum2 = fletcher_checksum(data_blocks, current_block_size)
+                sum1_bits = format(calc_sum1, f'0{current_block_size}b')
+                sum2_bits = format(calc_sum2, f'0{current_block_size}b')
+                received_checksum_str = bits[-current_block_size*2:]
+                received_sum1_str = received_checksum_str[:current_block_size]
+                received_sum2_str = received_checksum_str[current_block_size:]
+                calc_full = f"{sum2_bits}{sum1_bits}"
+                recv_full = f"{received_sum2_str}{received_sum1_str}"
+                print(f"{filename} -> OK {original_data}")
+                print(f"  Checksum = {calc_full} = {recv_full}")
+            else:
+                print(f"{filename} -> OK {original_data}")
         else:
             print(f"{filename} -> ERROR - Se detectaron errores")
             print("  El mensaje se descarta por detectar errores.")
@@ -175,7 +189,6 @@ def main():
                 print(f"  Datos recibidos (sin checksum): {original_data}")
                 data_blocks = bytes_to_blocks(original_data, current_block_size)
                 if data_blocks:
-                    print(f"  Detalle de verificación Fletcher {current_block_size}:")
                     print(f"    Dato (bloque {current_block_size} bits)   Sum1   Sum2")
                     modulus = (1 << current_block_size) - 1
                     sum1 = 1
@@ -183,7 +196,11 @@ def main():
                     for i, block in enumerate(data_blocks):
                         sum1 = (sum1 + block) % modulus
                         sum2 = (sum2 + sum1) % modulus
-                        print(f"    {format(block, f'0{current_block_size}b')} ({block})   {format(sum1, f'0{current_block_size}b')} ({sum1})   {format(sum2, f'0{current_block_size}b')} ({sum2})")
+                        # Formato alineado
+                        block_bin = format(block, f'0{current_block_size}b')
+                        sum1_bin = format(sum1, f'0{current_block_size}b')
+                        sum2_bin = format(sum2, f'0{current_block_size}b')
+                        print(f"    {block_bin:<{current_block_size}} ({block:>3})   {sum1_bin:<{current_block_size}} ({sum1:>3})   {sum2_bin:<{current_block_size}} ({sum2:>3})")
                     calc_sum1, calc_sum2 = fletcher_checksum(data_blocks, current_block_size)
                     sum1_bits = format(calc_sum1, f'0{current_block_size}b')
                     sum2_bits = format(calc_sum2, f'0{current_block_size}b')
