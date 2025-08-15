@@ -5,6 +5,8 @@ import sys
 import csv
 import os
 
+from utils.server_utils import write_files, create_files
+
 algorithms = {
     "hamming": "./algorithms/HammingCode/decoder.py",
     "fletcher": "./algorithms/FletcherChecksum/decoder.py",
@@ -18,17 +20,10 @@ def binary_to_ascii(bin_str):
 
 TEST_MODE = len(sys.argv) > 1 and sys.argv[1] == '--test'
 
-if TEST_MODE:
-    report_file = 'server_report.csv'
-    errors_file = 'errors.csv'
-    if not os.path.exists(report_file):
-        with open(report_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(["NumMensaje","Algoritmo","MensajeRecibido","Fix","Success"])
-    if not os.path.exists(errors_file):
-        with open(errors_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(["NumMensaje","Real","Falso"])
+report_file = 'server_report.csv'
+errors_file = 'errors.csv'
+
+if TEST_MODE: create_files(report_file, errors_file)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(('127.0.0.1', 5000))
@@ -43,6 +38,7 @@ while True:
     trama = payload['trama']
     num_msg = payload.get("NumMensaje", None)
     msg = None
+    print(payload)
 
     print("==="*20)
     if algo not in algorithms:
@@ -91,24 +87,9 @@ while True:
         print(f"Mensaje recibido: {msg}")
     
     if TEST_MODE and num_msg is not None:
-        # Leer el mensaje original desde client_report.csv
-        with open('client_report.csv', newline='') as f:
-            reader = csv.DictReader(f)
-            if msg:
-                orig_row = next((r for r in reader if int(r["NumMensaje"]) == msg), None)
-            if orig_row:
-                success = (orig_row["MensajeOriginalASCII"] == msg)
-                with open(report_file, 'a', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([num_msg, algo, msg, fix_status, success])
-                if not success:
-                    with open(errors_file, 'a', newline='') as f:
-                        writer = csv.writer(f)
-                        writer.writerow([num_msg, orig_row["MensajeOriginalASCII"], msg])
-            else:
-                with open(errors_file, 'a', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([None, None, None])
+        print(f"{num_msg}. {msg} con {algo}")
+        write_files(msg, report_file, num_msg, algo, fix_status, errors_file)
+
 
 
     conn.close()
