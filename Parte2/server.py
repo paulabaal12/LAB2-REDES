@@ -6,9 +6,9 @@ import csv
 import os
 
 algorithms = {
-    "Hamming": "./algorithms/HammingCode/decoder.py",
-    "Fletcher": "./algorithms/FletcherChecksum/decoder.py",
-    "CRC": "./algorithms/CRC-32/decoder.py"
+    "hamming": "./algorithms/HammingCode/decoder.py",
+    "fletcher": "./algorithms/FletcherChecksum/decoder.py",
+    "crc": "./algorithms/CRC-32/decoder.py"
 }
 
 

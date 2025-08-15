@@ -10,8 +10,8 @@ const algorithmss = {
 };
 
 const algorithms = {
-        "CRC": "./algorithms/CRC-32/encoder.js",
-        "Fletcher": "./algorithms/FletcherChecksum/encoder.js",
+        "crc": "./algorithms/CRC-32/encoder.js",
+        "fletcher": "./algorithms/FletcherChecksum/encoder.js",
 };
 
 // Función auxiliar para convertir ASCII a binario
@@ -46,11 +46,13 @@ async function startSending() {
         const msg = await askQuestion("Mensaje a enviar (o 'salir' para terminar): ");
         if (msg.toLowerCase() === 'salir') {
             console.log("Saliendo...");
-            break; // Sale del bucle si el usuario escribe 'salir'
+            break;
         }
 
         // Pide el algoritmo
-        const algo = await askQuestion("Algoritmo (Hamming/Fletcher/CRC): ");
+        const algo_raw = await askQuestion("Algoritmo (Hamming/Fletcher/CRC): ")
+        const algo = algo_raw.toLowerCase();
+        
 
         // Verifica si el algoritmo es válido
         if (!algorithms[algo]) {
