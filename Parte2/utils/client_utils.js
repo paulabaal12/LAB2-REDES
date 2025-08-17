@@ -31,4 +31,4 @@ function randomAsciiString(length) {
 
 
 
-export { asciiToBinary, applyNoise, randomAsciiString}
+module.exports = { asciiToBinary, applyNoise, randomAsciiString} ;

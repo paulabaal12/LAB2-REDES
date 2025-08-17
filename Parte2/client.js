@@ -3,13 +3,13 @@ const readline = require('readline');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 
-const { asciiToBinary, applyNoise , randomAsciiString} = require('./utils/client_utils.js');
+const { asciiToBinary, applyNoise, randomAsciiString } = require('./utils/client_utils.js');
 
 
 const algorithms = {
-        //"hamming": "./algorithms/HammingCode/encoder.js",
-        "crc": "./algorithms/CRC-32/encoder.js",
-        "fletcher": "./algorithms/FletcherChecksum/encoder.js",
+    "hamming": "./algorithms/HammingCode/encoder.js",
+    "crc": "./algorithms/CRC-32/encoder.js",
+    "fletcher": "./algorithms/FletcherChecksum/encoder.js",
 };
 
 
@@ -21,13 +21,13 @@ function askQuestion(query) {
     return new Promise(resolve => rl.question(query, resolve));
 }
 
-function processInput(p, asciiMsg, algo){
+function processInput(p, asciiMsg, algo) {
     const binMsg = asciiToBinary(asciiMsg);
     const encoded = execFileSync('node', [algorithms[algo], binMsg]).toString().trim();
     const noisy = applyNoise(encoded, p);
     const bitsFlipped = noisy.split('').reduce((acc, bit, idx) => acc + (bit !== encoded[idx] ? 1 : 0), 0);
 
-    return {binMsg, encoded, noisy, bitsFlipped};
+    return { binMsg, encoded, noisy, bitsFlipped };
 }
 
 // Función principal que ejecutará el bucle de envío
@@ -42,14 +42,14 @@ async function startSending() {
 
         const algo_raw = await askQuestion("Algoritmo (Hamming/Fletcher/CRC): ")
         const algo = algo_raw.toLowerCase();
-        
+
         if (!algorithms[algo]) {
             console.error("Algoritmo no válido. Por favor, intente de nuevo.");
             continue;
         }
 
-        const prob  = 0.001;
-        const {binMsg, encoded, noisy} = processInput(p=prob, asciiMsg=msg, algo)
+        const prob = 0.001;
+        const { binMsg, encoded, noisy } = processInput(p = prob, asciiMsg = msg, algo)
 
         // Crea una nueva conexión TCP
         const client = new net.Socket();
@@ -72,6 +72,19 @@ async function startSending() {
     rl.close(); // Cierra la interfaz readline al salir del bucle
 }
 
+function sendFinish(expectedLast, runId) {
+    return new Promise((resolve, reject) => {
+        const client = new net.Socket();
+        client.connect(5000, '127.0.0.1', () => {
+            const payload = { type: 'finish', expected_last: expectedLast, run_id: runId };
+            client.write(JSON.stringify(payload));
+            client.end();
+        });
+        client.on('close', resolve);
+        client.on('error', reject);
+    });
+}
+
 async function runTest(totalMessages) {
     const probs = [0.001, 0.005, 0.01];
     const algoNames = Object.keys(algorithms);
@@ -86,9 +99,9 @@ async function runTest(totalMessages) {
         const perProb = Math.floor(msgsPerAlgo / probs.length);
         for (const p of probs) {
             for (let i = 0; i < perProb; i++) {
-                
+
                 const asciiMsg = randomAsciiString(5 + Math.floor(Math.random() * 11)); // 5–15 chars
-                const {binMsg, encoded, noisy, bitsFlipped} = processInput(p, asciiMsg, algo);
+                const { binMsg, encoded, noisy, bitsFlipped } = processInput(p, asciiMsg, algo);
 
                 // Guardar en CSV
                 fs.appendFileSync('client_report.csv',
@@ -125,7 +138,16 @@ async function runTest(totalMessages) {
         }
     }
     console.log(`\n¡Test de ${totalMessages} mensajes completado!`);
+
+    try {
+        const runId = `N${totalMessages}`; 
+        await sendFinish(msgCounter - 1, runId);
+        console.log(`Finish enviado (expected_last=${msgCounter - 1}).`);
+    } catch (e) {
+        console.error("No se pudo notificar finish al servidor:", e.message);
+    }
 }
+
 
 if (process.argv[2] === '--test') {
     const total = parseInt(process.argv[3] || '100', 10);

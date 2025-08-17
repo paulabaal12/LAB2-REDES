@@ -2,8 +2,9 @@
 # Código Hamming - Receptor
 # Uso:
 #   python decoder.py in/msg1_ok.txt in/msg2_err1.txt --verbose
+#   python decoder.py 1011001 [--verbose]
 
-import sys, os
+import sys, os, json
 
 def is_binary(s: str) -> bool:
     return len(s) > 0 and all(c in "01" for c in s)
@@ -18,12 +19,6 @@ def infer_r_from_n(n: int) -> int:
     return r
 
 def decode_hamming(codeword: str, verbose: bool=False):
-    """
-    Devuelve (status, message_bits, fixed_pos)
-    status: "OK" o "FIX"
-    message_bits: str (datos sin paridades)
-    fixed_pos: int | None
-    """
     n = len(codeword)
     r = infer_r_from_n(n)
 
@@ -82,39 +77,81 @@ def read_bits_file(path: str) -> str:
                 return s
     return ""
 
+def read_bits_stdin() -> str:
+    data = sys.stdin.read()
+    return "".join(data.strip().split())
+
 def main():
     verbose = False
-    files = []
+    as_json = False
+    tokens = []
     for a in sys.argv[1:]:
         if a == "--verbose":
             verbose = True
+        elif a == "--json":
+            as_json = True
         else:
-            files.append(a)
+            tokens.append(a)
 
-    if len(files) < 1:
-        print("Uso: python decoder.py <archivo1> [archivo2 ...] [--verbose]", file=sys.stderr)
+    if len(tokens) < 1:
+        print("Uso: python decoder.py <bits|archivo1|- > [archivo2 ...] [--verbose] [--json]", file=sys.stderr)
         sys.exit(1)
 
-    for p in files:
-        if not os.path.isfile(p):
-            print(f"No existe el archivo: {p}", file=sys.stderr)
+    any_processed = False
+
+    for t in tokens:
+        label = None
+        bits = None
+
+        if t == "-":
+            bits = read_bits_stdin()
+            label = "stdin"
+        elif is_binary(t):
+            bits = t
+            label = f"bits_{len(t)}"
+        elif os.path.isfile(t):
+            bits = read_bits_file(t)
+            label = os.path.basename(t)
+        else:
+            print(f"No existe el archivo o no es binario válido: {t}", file=sys.stderr)
             continue
 
-        bits = read_bits_file(p)
         if not is_binary(bits):
-            print(f"{p}: contenido no binario (solo 0/1 en una línea).", file=sys.stderr)
+            print(f"{label}: contenido no binario (solo 0/1 en una línea).", file=sys.stderr)
             continue
 
         status, msg, pos, fixed_code = decode_hamming(bits, verbose=verbose)
 
-        if status == "OK":
-            print(f"{os.path.basename(p)} -> OK {msg}")
-        elif status == "FIX":
-            if not verbose and fixed_code is not None:
-                print(f"Trama corregida: {fixed_code}")
-            print(f"{os.path.basename(p)} -> FIX pos={pos} {msg}")
-        else:  # DROP
-            print(f"{os.path.basename(p)} -> DROP (errores no corregibles)")
+        if as_json:
+            n = len(bits)
+            r = infer_r_from_n(n)
+            payload = {
+                "algo": "hamming",
+                "status": status,
+                "data_bits": msg,
+                "n": n,
+                "r": r,
+                "syndrome": 0 if status == "OK" else (pos or 0),
+                "fix": None
+            }
+            if status == "FIX":
+                payload["fix"] = {"pos": pos, "codeword": fixed_code}
+            print(json.dumps(payload, ensure_ascii=False))
+        else:
+            if status == "OK":
+                print("OK")
+                print(msg)
+            elif status == "FIX":
+                print("FIX")
+                print(msg)
+            else:
+                print("DROP")
+
+        any_processed = True
+
+    if not any_processed:
+        print("Ningún argumento válido procesado.", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

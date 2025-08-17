@@ -8,6 +8,9 @@
 //   node encoder.js tests/msg1.txt
 //   node encoder.js tests/msg1.txt --verbose (para ver el procedimiento)
 //
+//   node encoder.js 1011001
+//   node encoder.js 1011001 --verbose
+//
 
 const fs = require('fs');
 const path = require('path');
@@ -32,7 +35,7 @@ function fail(msg) {
 function encodeHamming(dataBits, { verbose = false } = {}) {
     const m = dataBits.length;
     const r = minimumR(m);
-    const n = m + r; 
+    const n = m + r;
 
     const code = new Array(n + 1).fill(0); // Empezamos el array con la posición 1
 
@@ -86,30 +89,38 @@ const verbose = rawArgs.includes('--verbose');
 const args = rawArgs.filter(a => a !== '--verbose');
 
 if (args.length >= 1) {
-    const outDir = path.resolve(__dirname, 'out');
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    let processed = 0;
 
-    args.forEach((filePath) => {
-        const abs = path.resolve(filePath);
-        if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
-            console.error(`No existe el archivo: ${filePath}`);
-            return;
-        }
-        const bits = fs.readFileSync(abs, 'utf8').trim();
-        if (!isBinary(bits)) {
-            console.error(`${filePath}: el contenido no es binario (solo 0/1 en una línea).`);
-            return;
-        }
-        const base = path.basename(filePath, path.extname(filePath));
-        const label = `${base} (${bits})`;
-        const trama = encodeHamming(bits, { verbose, label });
+    args.forEach((token) => {
+        let bits = null;
 
-        const outFile = path.join(outDir, `${base}_trama.txt`);
-        fs.writeFileSync(outFile, trama + '\n');
-        console.log(`✔ ${filePath} → ${outFile}`);
+        if (isBinary(token)) {
+            bits = token;
+        } else {
+            const abs = path.resolve(token);
+            if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+                const content = fs.readFileSync(abs, 'utf8').trim();
+                if (!isBinary(content)) {
+                    console.error(`${token}: el contenido no es binario (solo 0/1 en una línea).`);
+                    return;
+                }
+                bits = content;
+            } else {
+                console.error(`No existe el archivo o no es binario válido: ${token}`);
+                return;
+            }
+        }
+
+        const trama = encodeHamming(bits, { verbose });
+        console.log(trama);
+
+        processed++;
     });
+
+    if (processed === 0) {
+        fail('Ningún argumento válido. Usa binarios directos (0/1) o archivos existentes.');
+    }
     process.exit(0);
 }
 
-// Si se llega aquí, no hubo archivos ni bits válidos
-fail('Uso: node encoder.js <archivo1> [archivo2 ...] [--verbose] ');
+fail('Uso: node encoder.js <bits|archivo1> [archivo2 ...] [--verbose]');

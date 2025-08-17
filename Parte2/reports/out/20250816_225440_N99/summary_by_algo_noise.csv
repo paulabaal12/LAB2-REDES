@@ -1,0 +1,10 @@
+Algoritmo,NoiseProb,Total,Success,TasaExito(%),AvgBitsFlippeados
+crc,0.001,11,10,90.91,0.091
+crc,0.005,11,6,54.55,0.545
+crc,0.01,11,5,45.45,0.909
+fletcher,0.001,11,11,100.00,0.000
+fletcher,0.005,11,6,54.55,0.455
+fletcher,0.01,11,1,9.09,1.091
+hamming,0.001,11,11,100.00,0.091
+hamming,0.005,11,11,100.00,0.455
+hamming,0.01,11,10,90.91,0.909
