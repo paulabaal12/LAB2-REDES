@@ -1,9 +1,9 @@
 # Reporte de Pruebas
 
-- Mensajes (cliente): **99**
-- Registros (server): **99**
-- Fix detectados: **14**
-- Correcciones exitosas: **71** (71.72%)
+- Mensajes (cliente): **9999**
+- Registros (server): **9999**
+- Fix detectados: **1053**
+- Correcciones exitosas: **7165** (71.66%)
 
 ## Gráficas
 - chart_client_msgs_per_algo.png
