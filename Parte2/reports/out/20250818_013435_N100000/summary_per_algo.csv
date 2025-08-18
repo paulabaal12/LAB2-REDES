@@ -1,0 +1,4 @@
+Algoritmo,TotalCliente,RegistrosServer,Fix,Success,TasaExito(%)
+crc,33333,33333,0,19921,59.76
+fletcher,33333,33333,0,21441,64.32
+hamming,33333,33333,10587,30071,90.21
