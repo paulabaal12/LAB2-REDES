@@ -1,6 +1,6 @@
 # Redes - Laboratorio 2: Esquemas de detección y corrección de errores
 
-* Monica Salvatierra - 22249
+* Mónica Salvatierra - 22249
 * Derek Arreaga - 22537
 * Paula Barillas - 22764
 
